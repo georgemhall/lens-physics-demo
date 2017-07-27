@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Camera Optics #2 - Ray Tracing</title>
+</head>
+<body>
+<div>
+<canvas id="canvas" width="1024" height="300" style="border:1px solid #000000;">
+ Your browser does not support HTML5 Canvas.
+</canvas>
+</div>
+<div>Initial Ray Height:<br/>
+<input id="rayHeight" type="range" value="40" min="0" max="50" step="1"/>
+<input id="txtRayHeight" type="text" value="40">
+<br/>
+Focal Length 1 (Converging Lens):<br/>
+<input id="F1slider" type="range" value="50" min="50" max="300" step="1"/>
+<input id="txtF1" type="text" value="50">
+<br/>
+Focal Length 2 (Diverging Lens):<br/>
+<input id="F2slider" type="range" value="20" min="0" max="100" step="1"/>
+<input id="txtF2" type="text" value="-20">
+<br/>
+Distance between lenses:<br/>
+<input id="DistSlider" type="range" value="35" min="0" max="100" step="1"/>
+<input id="txtDist" type="text" value="35">
+</div>
+<script>
+function init() {
+	// Setup canvas
+	var can = document.getElementById("canvas");
+	var c = canvas.getContext("2d");
+	
+	// Configure sliders
+	var txtRayHeight = document.getElementById("txtRayHeight");
+	var raySlider = document.getElementById("rayHeight");
+	raySlider.addEventListener("input", raySliderUpdate);
+	
+	var txtF1 = document.getElementById("txtF1");
+	var F1slider = document.getElementById("F1slider");
+	F1slider.addEventListener("input", focalSliderUpdate);
+	
+	var txtF2 = document.getElementById("txtF2");
+	var F2slider = document.getElementById("F2slider");
+	F2slider.addEventListener("input", focalSliderUpdate);
+	
+	var txtDist = document.getElementById("txtDist");
+	var DistSlider = document.getElementById("DistSlider");
+	DistSlider.addEventListener("input", distSliderUpdate);
+	
+	// Configure Graph Window
+	var xMin = -100, xMax = +100, yMin = -50, yMax = +50;
+	
+	var xDoffset = 0;
+	var yDoffset = 0;
+
+	var width = can.width - 2 * xDoffset;
+	var height = can.height - 2 * yDoffset;
+	
+	// Graph variables
+	var f1 = parseInt(F1slider.value);
+	var f2 = parseInt(-F2slider.value);
+	var h = parseInt(raySlider.value);
+	var ds = parseInt(DistSlider.value);
+	
+	// Converging/Diverging Lens Location
+	var cv = 0;
+	var dv = 0;
+	
+	// Calculation variables
+	var Yc = h*(1-(ds/f1));
+	var EFL = parseInt(ds) + parseInt((f2*(ds - f1)) / (ds - f1 - f2));
+	var EFL2 = EFL;
+	
+	function updateVars() {
+		f1 = parseInt(F1slider.value);
+		f2 = parseInt(-F2slider.value);
+		h = parseInt(raySlider.value);
+		ds = parseInt(DistSlider.value);
+		Yc = h*(1-(ds/f1));
+		EFL2 = EFL;
+		EFL = parseInt(ds) + parseInt((f2*(ds - f1)) / (ds - f1 - f2));
+		if(EFL <= 0) {
+			EFL = EFL2;
+		}
+	}
+	
+	function drawGrid () {
+		//Draw the Oscilloscope Grid in the Canvas
+		c.clearRect(0, 0, can.width, can.height);
+		c.beginPath();
+		c.strokeStyle = "#eee";
+		c.lineWidth = "1";
+		// The vertical lines
+		for (var x = xMin; x <= xMax; x += 1) {
+			c.moveTo(xD(x), yD(yMin));
+			c.lineTo(xD(x), yD(yMax));
+		}	
+		// The horizontal lines
+		for (var y = yMin; y <= yMax; y += 1) {
+			c.moveTo(xD(xMin), yD(y));
+			c.lineTo(xD(xMax), yD(y));
+		}
+		c.stroke();
+
+		//Now the Axes
+		c.beginPath();
+		c.strokeStyle = "#000000";
+		c.lineWidth = "1";
+		
+		// Converging Lens
+		c.moveTo(xD(0),    yD(yMin));
+		c.lineTo(xD(0),    yD(yMax));
+		
+		// Diverging Lens
+		c.moveTo(xD(ds),    yD(yMin));
+		c.lineTo(xD(ds),    yD(yMax));
+		
+		c.stroke();
+		
+		// Optic Axis
+		c.beginPath();
+		c.setLineDash([5,3]);
+		c.moveTo(xD(xMin), yD(0));
+		c.lineTo(xD(xMax), yD(0));
+		c.stroke();
+		c.setLineDash([0]);
+		
+		// Film Plane
+		c.beginPath();
+		c.strokeStyle = "#00f";
+		c.lineWidth = "3";
+		c.moveTo(xD(xMax), yD(yMin));
+		c.lineTo(xD(xMax), yD(yMax));
+		c.stroke();
+	}
+	
+	function raySliderUpdate() {
+		h = raySlider.value;
+		txtRayHeight.value = h;
+		updateVars();
+		drawGraph();
+	}
+	
+	function focalSliderUpdate() {
+		f1 = F1slider.value;
+		f2 = -(F2slider.value);
+		txtF1.value = f1;
+		txtF2.value = f2;
+		updateVars();
+		drawGraph();
+	}
+	
+	function distSliderUpdate() {
+		ds = DistSlider.value;
+		txtDist.value = ds;
+		updateVars();
+		drawGraph();
+	}
+	
+	function drawGraph() {
+		drawGrid();
+		c.beginPath();
+		c.strokeStyle = "#0000ff";
+		c.lineWidth = 1;
+		
+		c.beginPath();
+		c.arc(xD(f1), yD(0), 1, 0, 2 * Math.PI, false);
+		c.fillStyle = 'blue';
+		c.fill();
+		c.lineWidth = 3;
+		c.stroke();
+		
+		// Left Line
+		c.beginPath();
+		c.lineWidth = 1;
+		c.moveTo(0, yD(h));
+		c.lineTo(xD(0), yD(h));
+		c.stroke();
+		
+		// Middle Line
+		c.beginPath();
+		c.moveTo(xD(0), yD(h));
+		c.lineTo(xD(ds), yD(Yc));
+		c.stroke();
+		
+		// Right Line
+		c.beginPath();
+		c.moveTo(xD(ds), yD(Yc));
+		c.lineTo(xD(EFL), yD(0));
+		
+		c.stroke();
+		console.log("=================");
+		console.log("EFL ("+EFL+") = "+ds+" + ["+f2+"("+ds+"-"+f1+")]");
+		console.log("                ("+ds+"-"+f1+"+"+Math.abs(f2)+")");
+		console.log("=================");
+		console.log("EFL ("+EFL+") = "+ds+" + ["+f2*(ds-f1)+")]");
+		console.log("                ("+(ds-f1-f2)+")");
+		console.log("-----------------");
+
+
+	}
+	
+	/*
+	Coordinate Transformations:
+    xD => width * (fraction of the way x is to the right)
+    xD =  width * (x - xMin)/(xMax - xMin)                 
+    yD => height * (fraction of the way y is to the bottom)
+    yD =  height * (yMax - y)/(yMax - yMin)
+	*/
+
+	function xD(x) {
+		return xDoffset + width * (x - xMin)/(xMax - xMin);
+	}
+
+	function yD(y) {
+		return yDoffset + height * (yMax - y)/(yMax - yMin);
+	}
+	
+	// Execute
+	drawGraph();
+}
+	window.onload = init;
+</script>
+</body>
+</html>
